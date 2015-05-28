@@ -19,6 +19,7 @@ use Cake\Core\InstanceConfigTrait;
 use Cake\Event\EventListenerInterface;
 use Cake\Network\Request;
 use Cake\Network\Response;
+use Cake\ORM\Query;
 use Cake\ORM\TableRegistry;
 
 /**
@@ -90,17 +91,15 @@ abstract class BaseAuthenticate implements EventListenerInterface
     }
 
     /**
-     * Find a user record using the username and password provided.
+     * Returns a query object using the username and password provided.
      *
-     * Input passwords will be hashed even when a user doesn't exist. This
-     * helps mitigate timing attacks that are attempting to find valid usernames.
+     * This is called internally by _findUser() which returns a user record.
      *
-     * @param string $username The username/identifier.
-     * @param string|null $password The password, if not provide password checking is skipped
-     *   and result of find is returned.
-     * @return bool|array Either false on failure, or an array of user data.
+     * @param string $username The username.
+     * @param string|null The password.
+     * @return \Cake\ORM\Query Query object.
      */
-    protected function _findUser($username, $password = null)
+    protected function _find($username, $password = null)
     {
         $userModel = $this->_config['userModel'];
         list(, $model) = pluginSplit($userModel);
@@ -120,10 +119,38 @@ abstract class BaseAuthenticate implements EventListenerInterface
             $table = $table->contain($contain);
         }
 
-        $result = $table
-            ->where($conditions)
-            ->first();
+        $query = $table
+            ->where($conditions);
 
+        return $query;
+    }
+
+    /**
+     * Find a user record using the username and password provided.
+     *
+     * If a query is provided as the firt argument, _find() will be called
+     * internally.
+     *
+     * Input passwords will be hashed even when a user doesn't exist. This
+     * helps mitigate timing attacks that are attempting to find valid usernames.
+     *
+     * @param string|\Cake\ORM\Query $query The username/identifier or a Query object.
+     * @param string $username The username, or the password if $query not provided.
+     * @param string|null $password The password, if not provide password checking is skipped
+     *   and result of find is returned.
+     * @return bool|array Either false on failure, or an array of user data.
+     */
+    protected function _findUser($query, $username = null, $password = null)
+    {
+        $fields = $this->_config['fields'];
+
+        if (!$query instanceof Query) {
+            $password = $username;
+            $username = $query;
+            $query = $this->_find($username, $password);
+        }
+
+        $result = $query->first();
         if (empty($result)) {
             return false;
         }
