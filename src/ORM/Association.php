@@ -606,15 +606,39 @@ abstract class Association
     }
 
     /**
-     * Sets whether the records on the target table are dependent on the source table.
+     * Whether the association record is dependent on the owning record.
      *
      * This is primarily used to indicate that records should be removed if the owning record in
      * the source table is deleted.
      *
+     * @param \Cake\Datasource\EntityInterface $entity The entity that might be deletable because it's dependent on it's source.
      * @return bool
+     */
+    public function isDependent(EntityInterface $entity)
+    {
+        $dependent = $this->getDependent();
+
+        if (is_callable($dependent)) {
+            $dependent = (bool)$dependent($entity);
+        }
+
+        return $dependent;
+    }
+
+    /**
+     * Gets the _dependent property on the source table.
+     *
+     * This is primarily used to indicate that records should be removed if the owning record in
+     * the source table is deleted.
+     *
+     * This is usually a boolean but it can also be a callable that acts on the associated entity.
+     *
+     * @return bool|callable
      */
     public function getDependent()
     {
+        $dependent = $this->_dependent;
+
         return $this->_dependent;
     }
 
